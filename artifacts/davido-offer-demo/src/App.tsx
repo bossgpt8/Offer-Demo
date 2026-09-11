@@ -49,9 +49,9 @@ const networks: { name: Network; short: string; color: string }[] = [
 ];
 
 const seededComments: Comment[] = [
-  { id: 1, name: 'Oluwaseun A.', location: 'Lagos', text: 'The flow is clean. I am checking the demo from Yaba.', color: '#397f61', likes: 38, liked: false, replies: 4 },
+  { id: 1, name: 'Oluwaseun A.', location: 'Lagos', text: 'The flow is clean. I am checking the data scheme demo from Yaba.', color: '#397f61', likes: 38, liked: false, replies: 4 },
   { id: 2, name: 'Musa Bello', location: 'Kaduna', text: 'Nice to see every state listed. The safety note is important.', color: '#a96b3f', likes: 24, liked: false, replies: 2 },
-  { id: 3, name: 'Chiamaka E.', location: 'Enugu', text: 'A proper fan celebration should feel this joyful. OBO season.', color: '#8a5e98', likes: 51, liked: false, replies: 6 },
+  { id: 3, name: 'Chiamaka E.', location: 'Enugu', text: 'The free-data concept feels simple to follow and easy to understand.', color: '#8a5e98', likes: 51, liked: false, replies: 6 },
   { id: 4, name: 'Tomiwa K.', location: 'Oyo', text: 'Testing Airtel for the local demo. Good luck to everyone joining in.', color: '#3474a8', likes: 17, liked: false, replies: 1 },
 ];
 
@@ -116,7 +116,7 @@ function App() {
   };
 
   const shareDemo = async () => {
-    const shareText = 'Explore the Davido fan data-drop demo — built for safe local interaction.';
+    const shareText = 'Explore the free-data scheme demo — built for safe local interaction.';
     try {
       await navigator.clipboard?.writeText(shareText);
       setToast('Demo link message copied locally');
@@ -168,11 +168,11 @@ function App() {
       </div>
 
       <nav className="nav" aria-label="Primary navigation">
-        <div className="brand" data-testid="brand-davido-demo">
+        <div className="brand" data-testid="brand-data-scheme-demo">
           <div className="brand-mark">O</div>
           <div>
-            <div className="brand-name">OBO DATA DROP</div>
-            <span className="brand-sub">fan celebration / local build</span>
+            <div className="brand-name">FREE DATA SCHEME</div>
+            <span className="brand-sub">community access / local build</span>
           </div>
         </div>
         <div className="nav-note"><Radio size={12} /> interactive campaign preview</div>
@@ -181,11 +181,11 @@ function App() {
       <section className="hero-wrap">
         <div className="hero-grid">
           <article className="hero-card" data-testid="card-hero">
-            <div className="hero-stamp">built for<br />the fans</div>
-            <div className="kicker"><i /> Nigerian fan energy</div>
+            <div className="hero-stamp">built for<br />the community</div>
+            <div className="kicker"><i /> community data access</div>
             <h1 className="hero-title">Big love.<br /><em>Big data.</em><br />Zero stress.</h1>
             <p className="hero-copy">
-              A bold, safe concept for celebrating Davido fans across Nigeria.
+              A bold, safe concept for a free-data scheme across Nigeria.
               Pick your home state and network to preview the experience in seconds.
             </p>
             <div className="hero-data">
@@ -211,7 +211,7 @@ function App() {
         <div className="section-heading">
           <div>
             <div className="section-kicker">the community is talking</div>
-            <h2 className="section-title">Live from the fan wall.</h2>
+            <h2 className="section-title">Live from the public wall.</h2>
           </div>
           <p className="section-note">Seeded local comments make the concept feel alive. Every interaction stays in this browser.</p>
         </div>
@@ -244,7 +244,7 @@ function App() {
                   className="composer-input"
                   value={composer}
                   onChange={(event) => setComposer(event.target.value)}
-                  placeholder="Add your voice to the fan wall..."
+                  placeholder="Add your voice to the public wall..."
                   maxLength={200}
                   data-testid="input-comment"
                   aria-label="Write a local comment"
@@ -279,7 +279,7 @@ function App() {
       </section>
 
       <footer className="footer">
-        <div><strong>OBO DATA DROP / CONCEPT 01</strong><br />A celebratory interface study for Nigerian fan communities.</div>
+        <div><strong>FREE DATA SCHEME / CONCEPT 01</strong><br />A safe interface study for community data-access campaigns.</div>
         <div>Made local by default. <strong>Demo only.</strong></div>
       </footer>
       {toast && <div className="toast" role="status" data-testid="status-toast">{toast}</div>}
@@ -304,7 +304,7 @@ function OfferPanel({
       {phase === 'select' && (
         <>
           <div className="panel-head">
-            <div><div className="panel-label">01 / choose your coordinates</div><h2 className="panel-title">Find your<br />fan drop.</h2></div>
+            <div><div className="panel-label">01 / choose your coordinates</div><h2 className="panel-title">Find your<br />data drop.</h2></div>
             <div className="status-pill"><span className="status-dot" /> demo live</div>
           </div>
           <p className="panel-blurb">Select a state and mobile network to unlock the simulated offer check. No personal details needed.</p>
@@ -349,7 +349,7 @@ function ProgressView({ progress }: { progress: number }) {
   return (
     <div className="progress-view" data-testid="status-progress">
       <div className="panel-label">02 / local simulation</div>
-      <div className="progress-top"><h3>Checking the drop...</h3><span className="progress-pct">{progress}%</span></div>
+      <div className="progress-top"><h3>Checking the scheme...</h3><span className="progress-pct">{progress}%</span></div>
       <div className="progress-track"><div className="progress-fill" style={{ width: `${progress}%` }} /></div>
       <div className="progress-step-list">
         {steps.map((step, index) => (
@@ -359,7 +359,7 @@ function ProgressView({ progress }: { progress: number }) {
           </div>
         ))}
       </div>
-      <p className="progress-note">This is a front-end simulation. The result is generated in your browser and does not contact Davido, a carrier, or any third party.</p>
+      <p className="progress-note">This is a front-end simulation. The result is generated in your browser and does not contact a carrier or any third party.</p>
     </div>
   );
 }
@@ -369,7 +369,7 @@ function ResultView({ state, network, onReset }: { state: string; network: Netwo
     <div data-testid="status-activation-result">
       <div className="result-icon"><Check size={28} strokeWidth={3} /></div>
       <div className="panel-label">03 / preview complete</div>
-      <h2 className="result-title">Your demo drop<br />is ready.</h2>
+      <h2 className="result-title">Your demo result<br />is ready.</h2>
       <p className="result-copy">The local experience is complete. This confirmation is intentionally simulated: no reward has been issued and no information was submitted.</p>
       <div className="result-meta">
         <div><span>selected state</span><strong>{state}</strong></div>
@@ -378,7 +378,7 @@ function ResultView({ state, network, onReset }: { state: string; network: Netwo
       <button type="button" className="cta secondary" onClick={onReset} data-testid="button-reset-offer">
         <span>Try another selection</span><Zap size={16} />
       </button>
-      <div className="tiny-safe"><Sparkles size={13} /><span>Demo reference: OBO-LOCAL-1042</span></div>
+      <div className="tiny-safe"><Sparkles size={13} /><span>Demo reference: DATA-LOCAL-1042</span></div>
     </div>
   );
 }
