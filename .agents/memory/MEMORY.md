@@ -1,0 +1,1 @@
+- [Safe demo boundary](safe-demo-boundary.md) — keep the offer experience local-only; never restore data collection, unknown scripts, forced sharing, or redirects.
