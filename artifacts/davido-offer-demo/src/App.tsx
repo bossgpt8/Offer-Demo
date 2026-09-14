@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   ArrowRight,
   Check,
   ChevronDown,
+  CircleAlert,
   Heart,
   ImagePlus,
   LockKeyhole,
@@ -16,11 +18,10 @@ import {
   Users,
   Wifi,
   X,
-  Zap,
 } from 'lucide-react';
+import { useCreateGiveawayEntry, type GiveawayEntry, type GiveawayEntryInput } from '@workspace/api-client-react';
 
-type Phase = 'select' | 'checking' | 'result';
-type Network = 'MTN' | 'Airtel' | 'Glo' | '9mobile';
+type Network = GiveawayEntryInput['network'];
 type Comment = {
   id: number;
   name: string;
@@ -49,64 +50,100 @@ const networks: { name: Network; short: string; color: string }[] = [
 ];
 
 const seededComments: Comment[] = [
-  { id: 1, name: 'Oluwaseun A.', location: 'Lagos', text: 'The flow is clean. I am checking the data scheme demo from Yaba.', color: '#397f61', likes: 38, liked: false, replies: 4 },
+  { id: 1, name: 'Oluwaseun A.', location: 'Lagos', text: 'The entry flow is clear. I am checking the scheme details from Yaba.', color: '#397f61', likes: 38, liked: false, replies: 4 },
   { id: 2, name: 'Musa Bello', location: 'Kaduna', text: 'Nice to see every state listed. The safety note is important.', color: '#a96b3f', likes: 24, liked: false, replies: 2 },
   { id: 3, name: 'Chiamaka E.', location: 'Enugu', text: 'The free-data concept feels simple to follow and easy to understand.', color: '#8a5e98', likes: 51, liked: false, replies: 6 },
   { id: 4, name: 'Tomiwa K.', location: 'Oyo', text: 'Testing Airtel for the local demo. Good luck to everyone joining in.', color: '#3474a8', likes: 17, liked: false, replies: 1 },
 ];
 
+type FormErrors = Partial<Record<'phoneNumber' | 'state' | 'network' | 'terms' | 'contact', string>>;
+
+const queryClient = new QueryClient();
+
 function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AppContent />
+    </QueryClientProvider>
+  );
+}
+
+function AppContent() {
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [state, setState] = useState('');
   const [network, setNetwork] = useState<Network | ''>('');
-  const [phase, setPhase] = useState<Phase>('select');
-  const [progress, setProgress] = useState(0);
+  const [consentToTerms, setConsentToTerms] = useState(false);
+  const [consentToContact, setConsentToContact] = useState(false);
+  const [errors, setErrors] = useState<FormErrors>({});
   const [comments, setComments] = useState<Comment[]>(seededComments);
   const [postLiked, setPostLiked] = useState(false);
   const [composer, setComposer] = useState('');
   const [attachment, setAttachment] = useState<string | undefined>();
   const [toast, setToast] = useState('');
+  const [submittedEntry, setSubmittedEntry] = useState<GiveawayEntry | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const commentRef = useRef<HTMLDivElement>(null);
+  const createEntry = useCreateGiveawayEntry();
 
-  useEffect(() => {
-    if (phase !== 'checking') return;
-    setProgress(8);
-    const timer = window.setInterval(() => {
-      setProgress((current) => {
-        if (current >= 100) {
-          window.clearInterval(timer);
-          return 100;
-        }
-        return Math.min(current + (current < 62 ? 17 : 11), 100);
-      });
-    }, 580);
-    return () => window.clearInterval(timer);
-  }, [phase]);
-
-  useEffect(() => {
-    if (phase === 'checking' && progress >= 100) {
-      const timer = window.setTimeout(() => setPhase('result'), 500);
-      return () => window.clearTimeout(timer);
-    }
-    return undefined;
-  }, [phase, progress]);
-
-  useEffect(() => {
-    if (!toast) return;
-    const timer = window.setTimeout(() => setToast(''), 2600);
-    return () => window.clearTimeout(timer);
-  }, [toast]);
-
-  const startCheck = () => {
-    if (!state || !network) return;
-    setPhase('checking');
+  const clearError = (field: keyof FormErrors) => {
+    if (!errors[field]) return;
+    setErrors((current) => ({ ...current, [field]: undefined }));
   };
 
-  const resetOffer = () => {
-    setPhase('select');
-    setProgress(0);
+  const normalizePhone = (value: string) => {
+    const compact = value.replace(/[\s()-]/g, '');
+    if (compact.startsWith('0')) return `+234${compact.slice(1)}`;
+    if (compact.startsWith('234')) return `+${compact}`;
+    return compact;
+  };
+
+  const validate = (): GiveawayEntryInput | null => {
+    const nextErrors: FormErrors = {};
+    const compact = phoneNumber.replace(/[\s()-]/g, '');
+    const validNigerianPhone = /^(?:0[789]\d{9}|\+234[789]\d{9}|234[789]\d{9})$/.test(compact);
+    if (!validNigerianPhone) nextErrors.phoneNumber = 'Enter a valid Nigerian mobile number, for example 080 1234 5678.';
+    if (!state) nextErrors.state = 'Select the state where you live.';
+    if (!network) nextErrors.network = 'Choose your mobile network.';
+    if (!consentToTerms) nextErrors.terms = 'Please agree to the terms and privacy notice to enter.';
+    if (!consentToContact) nextErrors.contact = 'Please allow giveaway-related contact so we can follow up.';
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0 || !network || !state) return null;
+    return {
+      phoneNumber: normalizePhone(phoneNumber),
+      state,
+      network,
+      consentToTerms: true,
+      consentToContact: true,
+    };
+  };
+
+  const handleEntrySubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (createEntry.isPending) return;
+    const data = validate();
+    if (!data) return;
+    setErrors({});
+    createEntry.reset();
+    createEntry.mutate({ data }, {
+      onSuccess: (entry) => {
+        setSubmittedEntry(entry);
+        setToast('Your entry was received securely');
+      },
+      onError: () => {
+        setToast('We could not save the entry. Please try again.');
+      },
+    });
+  };
+
+  const resetEntry = () => {
+    setSubmittedEntry(null);
+    setErrors({});
+    setPhoneNumber('');
     setState('');
     setNetwork('');
+    setConsentToTerms(false);
+    setConsentToContact(false);
+    createEntry.reset();
   };
 
   const toggleCommentLike = (id: number) => {
@@ -116,10 +153,10 @@ function App() {
   };
 
   const shareDemo = async () => {
-    const shareText = 'Explore the free-data scheme demo — built for safe local interaction.';
+    const shareText = 'Explore the Free Data Scheme entry page — built for clear, safe local interaction.';
     try {
       await navigator.clipboard?.writeText(shareText);
-      setToast('Demo link message copied locally');
+      setToast('Share text copied locally');
     } catch {
       setToast('Sharing is simulated in this demo');
     }
@@ -163,72 +200,82 @@ function App() {
     <main className="page-shell" data-testid="page-offer-demo">
       <div className="topline" data-testid="banner-demo-status">
         <ShieldCheck size={13} aria-hidden="true" />
-        <span>Safe local demo</span>
-        <span>No reward, phone number, or personal data is submitted</span>
+        <span data-testid="text-banner-label">Safe entry preview</span>
+        <span data-testid="text-banner-disclosure">Your information is submitted only when you choose to enter</span>
       </div>
 
-      <nav className="nav" aria-label="Primary navigation">
+      <nav className="nav" aria-label="Primary navigation" data-testid="nav-primary">
         <div className="brand" data-testid="brand-data-scheme-demo">
-          <div className="brand-mark">O</div>
+          <div className="brand-mark" data-testid="mark-data-scheme">O</div>
           <div>
             <div className="brand-name">FREE DATA SCHEME</div>
-            <span className="brand-sub">community access / local build</span>
+            <span className="brand-sub">community access / clear entry</span>
           </div>
         </div>
-        <div className="nav-note"><Radio size={12} /> interactive campaign preview</div>
+        <div className="nav-note" data-testid="text-nav-note"><Radio size={12} /> giveaway entry page</div>
       </nav>
 
-      <section className="hero-wrap">
+      <section className="hero-wrap" data-testid="section-entry">
         <div className="hero-grid">
           <article className="hero-card" data-testid="card-hero">
-            <div className="hero-stamp">built for<br />the community</div>
+            <div className="hero-stamp" data-testid="badge-hero-stamp">built for<br />the community</div>
             <div className="kicker"><i /> community data access</div>
-            <h1 className="hero-title">Big love.<br /><em>Big data.</em><br />Zero stress.</h1>
-            <p className="hero-copy">
-              A bold, safe concept for a free-data scheme across Nigeria.
-              Pick your home state and network to preview the experience in seconds.
+            <h1 className="hero-title" data-testid="heading-hero">Big love.<br /><em>Fair entry.</em><br />Zero stress.</h1>
+            <p className="hero-copy" data-testid="text-hero-copy">
+              Enter once with the details needed to review your giveaway entry.
+              We explain what happens before you submit, without payment, pressure, or surprise redirects.
             </p>
-            <div className="hero-data">
-              <strong>10GB</strong>
-              <span>demo reward concept</span>
+            <div className="hero-data" data-testid="text-hero-status">
+              <strong>01</strong>
+              <span>clear entry, one reference</span>
             </div>
           </article>
 
-          <OfferPanel
-            phase={phase}
-            state={state}
-            network={network}
-            progress={progress}
-            onState={setState}
-            onNetwork={setNetwork}
-            onStart={startCheck}
-            onReset={resetOffer}
-          />
+          {submittedEntry ? (
+            <SuccessPanel entry={submittedEntry} onReset={resetEntry} />
+          ) : (
+            <EntryFormPanel
+              phoneNumber={phoneNumber}
+              state={state}
+              network={network}
+              consentToTerms={consentToTerms}
+              consentToContact={consentToContact}
+              errors={errors}
+              isPending={createEntry.isPending}
+              serverError={createEntry.error}
+              onPhone={(value) => { setPhoneNumber(value); clearError('phoneNumber'); }}
+              onState={(value) => { setState(value); clearError('state'); }}
+              onNetwork={(value) => { setNetwork(value); clearError('network'); }}
+              onTerms={(value) => { setConsentToTerms(value); clearError('terms'); }}
+              onContact={(value) => { setConsentToContact(value); clearError('contact'); }}
+              onSubmit={handleEntrySubmit}
+            />
+          )}
         </div>
       </section>
 
-      <section className="section" ref={commentRef}>
+      <section className="section" ref={commentRef} data-testid="section-community">
         <div className="section-heading">
           <div>
             <div className="section-kicker">the community is talking</div>
-            <h2 className="section-title">Live from the public wall.</h2>
+            <h2 className="section-title" data-testid="heading-community">Live from the public wall.</h2>
           </div>
-          <p className="section-note">Seeded local comments make the concept feel alive. Every interaction stays in this browser.</p>
+          <p className="section-note" data-testid="text-community-disclosure">Comments are a local-only demo. They are not part of your giveaway entry and never leave this browser.</p>
         </div>
         <div className="content-grid">
           <article className="feed-card" data-testid="card-community-feed">
             <div className="feed-summary">
-              <span><strong>{postLiked ? 342 : 341}</strong> reactions from the community</span>
-              <span><strong>{comments.length}</strong> comments · 18 shares</span>
+              <span><strong data-testid="text-reaction-count">{postLiked ? 342 : 341}</strong> reactions from the community</span>
+              <span><strong data-testid="text-comment-count">{comments.length}</strong> comments · 18 shares</span>
             </div>
             <div className="feed-actions">
-              <button className={`feed-action ${postLiked ? 'active' : ''}`} onClick={() => setPostLiked((liked) => !liked)} data-testid="button-like-post">
+              <button className={`feed-action ${postLiked ? 'active' : ''}`} onClick={() => setPostLiked((liked) => !liked)} data-testid="button-like-post" type="button">
                 <Heart size={15} fill={postLiked ? 'currentColor' : 'none'} /> Like
               </button>
-              <button className="feed-action" onClick={scrollToComments} data-testid="button-comment-post">
+              <button className="feed-action" onClick={scrollToComments} data-testid="button-comment-post" type="button">
                 <MessageCircle size={15} /> Comment
               </button>
-              <button className="feed-action" onClick={shareDemo} data-testid="button-share-post">
+              <button className="feed-action" onClick={shareDemo} data-testid="button-share-post" type="button">
                 <Share2 size={15} /> Share
               </button>
             </div>
@@ -259,7 +306,7 @@ function App() {
               </div>
               {attachment && (
                 <div className="attachment" data-testid="preview-comment-image">
-                  <img src={attachment} alt="Local attachment preview" />
+                  <img src={attachment} alt="Local attachment preview" data-testid="img-comment-attachment" />
                   <button type="button" onClick={() => { setAttachment(undefined); if (fileRef.current) fileRef.current.value = ''; }} data-testid="button-remove-attachment" aria-label="Remove attachment"><X size={11} /></button>
                 </div>
               )}
@@ -267,119 +314,182 @@ function App() {
           </article>
           <aside className="safety-card" data-testid="card-safety">
             <div className="safety-icon"><LockKeyhole size={19} /></div>
-            <h3>Real feeling.<br />Safe behavior.</h3>
-            <p>This concept keeps the excitement of a live offer while making the boundaries obvious.</p>
+            <h3 data-testid="heading-safety">Real feeling.<br />Safe behavior.</h3>
+            <p data-testid="text-safety-intro">This concept keeps the excitement of a live offer while making the boundaries obvious.</p>
             <div className="safety-list">
-              <div className="safety-item"><ShieldCheck size={16} /><span>No phone number field, payment flow, or account sign-in.</span></div>
-              <div className="safety-item"><Wifi size={16} /><span>No network API call. The activation state is simulated locally.</span></div>
-              <div className="safety-item"><Users size={16} /><span>Comments, likes, replies, and image previews never leave this page.</span></div>
+              <div className="safety-item" data-testid="text-safety-entry"><ShieldCheck size={16} /><span>Your entry asks only for a phone number, state, network, and two clear permissions.</span></div>
+              <div className="safety-item" data-testid="text-safety-carrier"><Wifi size={16} /><span>Carrier fulfillment is not connected yet. No data bundle is issued from this page.</span></div>
+              <div className="safety-item" data-testid="text-safety-community"><Users size={16} /><span>Comments, likes, replies, and image previews never leave this page.</span></div>
             </div>
           </aside>
         </div>
       </section>
 
-      <footer className="footer">
-        <div><strong>FREE DATA SCHEME / CONCEPT 01</strong><br />A safe interface study for community data-access campaigns.</div>
-        <div>Made local by default. <strong>Demo only.</strong></div>
+      <footer className="footer" data-testid="footer-demo">
+        <div><strong>FREE DATA SCHEME / CONCEPT 01</strong><br />A transparent interface study for community data-access campaigns.</div>
+        <div>Made local by default. <strong>Entry review only.</strong></div>
       </footer>
       {toast && <div className="toast" role="status" data-testid="status-toast">{toast}</div>}
     </main>
   );
 }
 
-function OfferPanel({
-  phase, state, network, progress, onState, onNetwork, onStart, onReset,
+function EntryFormPanel({
+  phoneNumber,
+  state,
+  network,
+  consentToTerms,
+  consentToContact,
+  errors,
+  isPending,
+  serverError,
+  onPhone,
+  onState,
+  onNetwork,
+  onTerms,
+  onContact,
+  onSubmit,
 }: {
-  phase: Phase;
+  phoneNumber: string;
   state: string;
   network: Network | '';
-  progress: number;
+  consentToTerms: boolean;
+  consentToContact: boolean;
+  errors: FormErrors;
+  isPending: boolean;
+  serverError: unknown;
+  onPhone: (value: string) => void;
   onState: (value: string) => void;
   onNetwork: (value: Network) => void;
-  onStart: () => void;
-  onReset: () => void;
+  onTerms: (value: boolean) => void;
+  onContact: (value: boolean) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
+  const apiError = serverError as { response?: { data?: { error?: string } }; message?: string } | null;
+  const serverMessage = apiError?.response?.data?.error ?? apiError?.message;
+
   return (
-    <article className="offer-panel" data-testid="card-offer-flow">
-      {phase === 'select' && (
-        <>
-          <div className="panel-head">
-            <div><div className="panel-label">01 / choose your coordinates</div><h2 className="panel-title">Find your<br />data drop.</h2></div>
-            <div className="status-pill"><span className="status-dot" /> demo live</div>
+    <article className="offer-panel entry-panel" data-testid="card-entry-form">
+      <div className="panel-head">
+        <div><div className="panel-label">01 / enter transparently</div><h2 className="panel-title">Join the<br />giveaway list.</h2></div>
+        <div className="status-pill" data-testid="status-entry-open"><span className="status-dot" /> accepting entries</div>
+      </div>
+      <p className="panel-blurb" data-testid="text-entry-intro">Use a number we can reach, tell us where you are, and choose your network. Nothing is charged and carrier fulfillment is not connected yet.</p>
+
+      <form onSubmit={onSubmit} noValidate data-testid="form-giveaway-entry">
+        <label className="field-label" htmlFor="phone-input">Nigerian phone number</label>
+        <div className={`phone-field ${errors.phoneNumber ? 'has-error' : ''}`}>
+          <span className="phone-prefix">+234</span>
+          <input
+            id="phone-input"
+            className="phone-input"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            placeholder="801 234 5678"
+            value={phoneNumber}
+            onChange={(event) => onPhone(event.target.value)}
+            aria-invalid={Boolean(errors.phoneNumber)}
+            aria-describedby={errors.phoneNumber ? 'phone-error' : 'phone-help'}
+            data-testid="input-phone-number"
+          />
+        </div>
+        <p id="phone-help" className="field-help" data-testid="text-phone-help">Mobile numbers only. We normalise the number before secure submission.</p>
+        {errors.phoneNumber && <FieldError id="phone-error" message={errors.phoneNumber} />}
+
+        <label className="field-label entry-state-label" htmlFor="state-select">Your state</label>
+        <div className={`select-wrap ${errors.state ? 'has-error' : ''}`}>
+          <select id="state-select" value={state} onChange={(event) => onState(event.target.value)} aria-invalid={Boolean(errors.state)} data-testid="select-state">
+            <option value="">Select a Nigerian state</option>
+            {states.map((item) => <option key={item} value={item}>{item}</option>)}
+          </select>
+          <ChevronDown className="select-chevron" size={17} />
+        </div>
+        {errors.state && <FieldError id="state-error" message={errors.state} />}
+
+        <div className="field-label network-label">Your network</div>
+        <div className="network-grid" role="group" aria-label="Choose your mobile network" data-testid="group-network-options">
+          {networks.map((item) => (
+            <button
+              type="button"
+              key={item.name}
+              className={`network-choice ${network === item.name ? 'active' : ''}`}
+              onClick={() => onNetwork(item.name)}
+              aria-pressed={network === item.name}
+              data-testid={`button-network-${item.name.toLowerCase().replace('mobile', '')}`}
+            >
+              <span className="network-badge" style={{ background: item.color, color: item.name === 'MTN' ? '#173c2c' : '#fff' }}>{item.short}</span>
+              <span><span className="network-name">{item.name}</span><span className="network-type">mobile data</span></span>
+            </button>
+          ))}
+        </div>
+        {errors.network && <FieldError id="network-error" message={errors.network} />}
+
+        <div className="consent-stack" data-testid="group-consents">
+          <label className={`consent-row ${errors.terms ? 'has-error' : ''}`} htmlFor="consent-terms">
+            <input id="consent-terms" type="checkbox" checked={consentToTerms} onChange={(event) => onTerms(event.target.checked)} data-testid="checkbox-consent-terms" />
+            <span>I agree to the giveaway terms and privacy notice.</span>
+          </label>
+          {errors.terms && <FieldError id="terms-error" message={errors.terms} />}
+          <label className={`consent-row ${errors.contact ? 'has-error' : ''}`} htmlFor="consent-contact">
+            <input id="consent-contact" type="checkbox" checked={consentToContact} onChange={(event) => onContact(event.target.checked)} data-testid="checkbox-consent-contact" />
+            <span>I allow the giveaway team to contact me about this entry.</span>
+          </label>
+          {errors.contact && <FieldError id="contact-error" message={errors.contact} />}
+        </div>
+
+        {serverMessage && (
+          <div className="form-alert" role="alert" data-testid="status-entry-error">
+            <CircleAlert size={15} /><span>{serverMessage}</span>
           </div>
-          <p className="panel-blurb">Select a state and mobile network to unlock the simulated offer check. No personal details needed.</p>
-          <label className="field-label" htmlFor="state-select">Your state</label>
-          <div className="select-wrap">
-            <select id="state-select" value={state} onChange={(event) => onState(event.target.value)} data-testid="select-state">
-              <option value="">Select a Nigerian state</option>
-              {states.map((item) => <option key={item} value={item}>{item}</option>)}
-            </select>
-            <ChevronDown className="select-chevron" size={17} />
-          </div>
-          <div className="field-label network-label">Your network</div>
-          <div className="network-grid" role="group" aria-label="Choose your mobile network">
-            {networks.map((item) => (
-              <button
-                type="button"
-                key={item.name}
-                className={`network-choice ${network === item.name ? 'active' : ''}`}
-                onClick={() => onNetwork(item.name)}
-                data-testid={`button-network-${item.name.toLowerCase().replace('mobile', '')}`}
-              >
-                <span className="network-badge" style={{ background: item.color, color: item.name === 'MTN' ? '#173c2c' : '#fff' }}>{item.short}</span>
-                <span><span className="network-name">{item.name}</span><span className="network-type">mobile data</span></span>
-              </button>
-            ))}
-          </div>
-          <button type="button" className="cta" disabled={!state || !network} onClick={onStart} data-testid="button-start-check">
-            <span>Preview my offer</span><ArrowRight size={17} />
-          </button>
-          <div className="tiny-safe"><LockKeyhole size={13} /><span>Demo activation only. No data is sent to any network.</span></div>
-        </>
-      )}
-      {phase === 'checking' && <ProgressView progress={progress} />}
-      {phase === 'result' && <ResultView state={state} network={network} onReset={onReset} />}
+        )}
+        <button type="submit" className="cta" disabled={isPending} data-testid="button-submit-entry">
+          <span>{isPending ? 'Saving your entry...' : 'Submit my entry'}</span>
+          {isPending ? <span className="button-loader" aria-hidden="true" /> : <ArrowRight size={17} />}
+        </button>
+        <div className="tiny-safe" data-testid="text-submit-safety"><LockKeyhole size={13} /><span>No payment, forced sharing, or third-party redirect.</span></div>
+      </form>
+
+      <Disclosure />
     </article>
   );
 }
 
-function ProgressView({ progress }: { progress: number }) {
-  const steps = ['Reading your state selection', 'Matching a demo network route', 'Preparing a safe activation result'];
-  const activeStep = progress >= 72 ? 2 : progress >= 35 ? 1 : 0;
+function Disclosure() {
   return (
-    <div className="progress-view" data-testid="status-progress">
-      <div className="panel-label">02 / local simulation</div>
-      <div className="progress-top"><h3>Checking the scheme...</h3><span className="progress-pct">{progress}%</span></div>
-      <div className="progress-track"><div className="progress-fill" style={{ width: `${progress}%` }} /></div>
-      <div className="progress-step-list">
-        {steps.map((step, index) => (
-          <div className={`progress-step ${index === activeStep ? 'current' : ''} ${index < activeStep ? 'done' : ''}`} key={step} data-testid={`status-step-${index}`}>
-            <span className="step-icon">{index < activeStep ? <Check size={13} /> : index === activeStep ? <span className="loading-dot" /> : String(index + 1).padStart(2, '0')}</span>
-            <span>{step}</span>
-          </div>
-        ))}
+    <aside className="disclosure-card" data-testid="card-privacy-disclosure">
+      <div className="disclosure-heading"><ShieldCheck size={15} /><span>Before you submit</span></div>
+      <p data-testid="text-privacy-disclosure">We collect your phone number, state, network, and the two permissions above to record and follow up on this giveaway entry.</p>
+      <div className="disclosure-points">
+        <span data-testid="text-disclosure-retention"><strong>Use:</strong> entry review and giveaway-related contact only.</span>
+        <span data-testid="text-disclosure-retention-detail"><strong>Retention:</strong> kept only as long as needed to manage the giveaway.</span>
+        <span data-testid="text-disclosure-fulfillment"><strong>Important:</strong> carrier fulfillment is not connected yet, so this page cannot issue data.</span>
       </div>
-      <p className="progress-note">This is a front-end simulation. The result is generated in your browser and does not contact a carrier or any third party.</p>
-    </div>
+    </aside>
   );
 }
 
-function ResultView({ state, network, onReset }: { state: string; network: Network | ''; onReset: () => void }) {
+function FieldError({ id, message }: { id: string; message: string }) {
+  return <p id={id} className="field-error" role="alert" data-testid={`error-${id}`}>{message}</p>;
+}
+
+function SuccessPanel({ entry, onReset }: { entry: GiveawayEntry; onReset: () => void }) {
   return (
-    <div data-testid="status-activation-result">
+    <article className="offer-panel success-panel" data-testid="card-entry-success">
       <div className="result-icon"><Check size={28} strokeWidth={3} /></div>
-      <div className="panel-label">03 / preview complete</div>
-      <h2 className="result-title">Your demo result<br />is ready.</h2>
-      <p className="result-copy">The local experience is complete. This confirmation is intentionally simulated: no reward has been issued and no information was submitted.</p>
-      <div className="result-meta">
-        <div><span>selected state</span><strong>{state}</strong></div>
-        <div><span>selected network</span><strong>{network}</strong></div>
+      <div className="panel-label">02 / entry received</div>
+      <h2 className="result-title" data-testid="heading-entry-success">Your entry is<br />on the list.</h2>
+      <p className="result-copy" data-testid="text-entry-success">Thanks for entering. Keep this reference for your records. It confirms receipt only; it is not a promise of a reward or carrier activation.</p>
+      <div className="reference-card" data-testid="text-entry-reference">
+        <span>entry reference</span>
+        <strong>{entry.reference}</strong>
+        <small data-testid="text-entry-status">Status: {entry.status}</small>
       </div>
-      <button type="button" className="cta secondary" onClick={onReset} data-testid="button-reset-offer">
-        <span>Try another selection</span><Zap size={16} />
+      <button type="button" className="cta secondary" onClick={onReset} data-testid="button-new-entry">
+        <span>Submit another entry</span><Sparkles size={16} />
       </button>
-      <div className="tiny-safe"><Sparkles size={13} /><span>Demo reference: DATA-LOCAL-1042</span></div>
-    </div>
+      <div className="tiny-safe" data-testid="text-success-follow-up"><ShieldCheck size={13} /><span>We will only use your details for the stated giveaway follow-up.</span></div>
+    </article>
   );
 }
 
@@ -389,14 +499,14 @@ function CommentRow({ comment, onLike, onReply }: { comment: Comment; onLike: ()
       <div className="avatar" style={{ background: comment.color }} data-testid={`avatar-comment-${comment.id}`}>{comment.name.split(' ').map((word) => word[0]).join('').slice(0, 2)}</div>
       <div>
         <div className="comment-bubble">
-          <span className="comment-name">{comment.name}</span><span className="comment-location"><MapPin size={9} style={{ display: 'inline', verticalAlign: 'middle' }} /> {comment.location}</span>
+          <span className="comment-name" data-testid={`text-comment-name-${comment.id}`}>{comment.name}</span><span className="comment-location"><MapPin size={9} style={{ display: 'inline', verticalAlign: 'middle' }} /> {comment.location}</span>
           <p className="comment-text" data-testid={`text-comment-${comment.id}`}>{comment.text}</p>
-          {comment.image && <img className="comment-image" src={comment.image} alt="User attached local image" />}
+          {comment.image && <img className="comment-image" src={comment.image} alt="User attached local image" data-testid={`img-comment-${comment.id}`} />}
         </div>
         <div className="comment-tools">
           <button type="button" className={comment.liked ? 'active' : ''} onClick={onLike} data-testid={`button-like-comment-${comment.id}`}><Heart size={11} fill={comment.liked ? 'currentColor' : 'none'} /> Like {comment.likes}</button>
           <button type="button" onClick={onReply} data-testid={`button-reply-comment-${comment.id}`}>Reply {comment.replies}</button>
-          <span>now</span>
+          <span data-testid={`text-comment-time-${comment.id}`}>now</span>
         </div>
       </div>
     </div>

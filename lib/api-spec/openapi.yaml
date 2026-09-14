@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: giveaway
+    description: Giveaway entry operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /giveaway/entries:
+    post:
+      operationId: createGiveawayEntry
+      tags: [giveaway]
+      summary: Submit a giveaway entry
+      description: Stores a consented giveaway entry for follow-up by the giveaway operator.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GiveawayEntryInput"
+      responses:
+        "201":
+          description: Giveaway entry received
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GiveawayEntry"
+        "400":
+          description: Invalid giveaway entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +60,55 @@ components:
           type: string
       required:
         - status
+    GiveawayEntryInput:
+      type: object
+      properties:
+        phoneNumber:
+          type: string
+          minLength: 7
+          maxLength: 24
+        state:
+          type: string
+          minLength: 2
+          maxLength: 40
+        network:
+          type: string
+          enum: [MTN, Airtel, Glo, 9mobile]
+        consentToTerms:
+          type: boolean
+          const: true
+        consentToContact:
+          type: boolean
+          const: true
+      required:
+        - phoneNumber
+        - state
+        - network
+        - consentToTerms
+        - consentToContact
+    GiveawayEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [received]
+        reference:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - status
+        - reference
+        - createdAt
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
 
