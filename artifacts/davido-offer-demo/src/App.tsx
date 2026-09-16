@@ -1,4 +1,4 @@
-import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   ArrowRight,
@@ -515,18 +515,67 @@ function AdBreak({ onClose }: { onClose: () => void }) {
         These placements are optional and are not required to submit an entry or receive its confirmation.
       </p>
       <div className="ad-slot-grid">
-        <div className="ad-slot" data-ad-provider="adsterra" data-testid="slot-adsterra">
-          <span className="ad-slot-label">Advertisement</span>
-          <strong>Adsterra placement</strong>
-          <small>Waiting for an approved banner or native placement code.</small>
-        </div>
+        <LiveAdSlot format="native" label="Adsterra native banner" testId="slot-adsterra-native" />
+        <LiveAdSlot format="banner" label="Adsterra banner" testId="slot-adsterra-banner" />
         <div className="ad-slot" data-ad-provider="monetag" data-testid="slot-monetag">
           <span className="ad-slot-label">Advertisement</span>
           <strong>Monetag placement</strong>
-          <small>Waiting for an approved banner or vignette placement code.</small>
+          <small>Waiting for an approved placement code.</small>
         </div>
       </div>
     </aside>
+  );
+}
+
+function LiveAdSlot({
+  format,
+  label,
+  testId,
+}: {
+  format: 'native' | 'banner';
+  label: string;
+  testId: string;
+}) {
+  const slotRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const root = slotRef.current;
+    if (!root) return;
+    root.replaceChildren();
+
+    if (format === 'native') {
+      const loader = document.createElement('script');
+      loader.async = true;
+      loader.setAttribute('data-cfasync', 'false');
+      loader.src = 'https://pl31366337.profitableratecpmnetwork.com/f449c18cc707c8375ce4325ef2aa3dc7/invoke.js';
+
+      const container = document.createElement('div');
+      container.id = 'container-f449c18cc707c8375ce4325ef2aa3dc7';
+      root.append(loader, container);
+    } else {
+      const options = document.createElement('script');
+      options.text = `window.atOptions = {
+        key: 'a7f4e34826932c9423a4267bb6cd3c08',
+        format: 'iframe',
+        height: 60,
+        width: 468,
+        params: {}
+      };`;
+
+      const loader = document.createElement('script');
+      loader.src = 'https://www.highrevenueformat.com/a7f4e34826932c9423a4267bb6cd3c08/invoke.js';
+      root.append(options, loader);
+    }
+
+    return () => root.replaceChildren();
+  }, [format]);
+
+  return (
+    <div className="ad-slot ad-slot-live" data-ad-provider="adsterra" data-testid={testId}>
+      <span className="ad-slot-label">Advertisement</span>
+      <strong>{label}</strong>
+      <div ref={slotRef} className="ad-embed" aria-label={`${label} content`} />
+    </div>
   );
 }
 
