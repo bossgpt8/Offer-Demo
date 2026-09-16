@@ -83,6 +83,7 @@ function App() {
 
 function AppContent() {
   const popunderUrl = 'https://omg10.com/4/11768279';
+  const adCooldownMs = 2 * 60 * 1000;
   const [phoneNumber, setPhoneNumber] = useState('');
   const [state, setState] = useState('');
   const [network, setNetwork] = useState<Network | ''>('');
@@ -98,6 +99,7 @@ function AppContent() {
   const [submittedEntry, setSubmittedEntry] = useState<GiveawayEntry | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const commentRef = useRef<HTMLDivElement>(null);
+  const lastAdOpenAtRef = useRef(0);
   const createEntry = useCreateGiveawayEntry();
 
   const clearError = (field: keyof FormErrors) => {
@@ -138,11 +140,6 @@ function AppContent() {
     if (createEntry.isPending) return;
     const data = validate();
     if (!data) return;
-    const popunder = window.open(popunderUrl, '_blank', 'noopener,noreferrer');
-    if (popunder) {
-      popunder.blur();
-      window.focus();
-    }
     setErrors({});
     createEntry.reset();
     createEntry.mutate({ data }, {
@@ -216,6 +213,23 @@ function AppContent() {
     setComposer(`@${name} `);
     window.setTimeout(() => document.querySelector<HTMLInputElement>('[data-testid="input-comment"]')?.focus(), 0);
   };
+
+  useEffect(() => {
+    const handleGlobalClick = () => {
+      const now = Date.now();
+      if (now - lastAdOpenAtRef.current < adCooldownMs) return;
+
+      const popunder = window.open(popunderUrl, '_blank', 'noopener,noreferrer');
+      if (!popunder) return;
+
+      popunder.blur();
+      window.focus();
+      lastAdOpenAtRef.current = now;
+    };
+
+    document.addEventListener('click', handleGlobalClick, true);
+    return () => document.removeEventListener('click', handleGlobalClick, true);
+  }, [adCooldownMs, popunderUrl]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
