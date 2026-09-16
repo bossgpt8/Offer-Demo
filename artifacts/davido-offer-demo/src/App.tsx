@@ -517,11 +517,18 @@ function AdBreak({ onClose }: { onClose: () => void }) {
       <div className="ad-slot-grid">
         <LiveAdSlot format="native" label="Adsterra native banner" testId="slot-adsterra-native" />
         <LiveAdSlot format="banner" label="Adsterra banner" testId="slot-adsterra-banner" />
-        <div className="ad-slot" data-ad-provider="monetag" data-testid="slot-monetag">
+        <a
+          className="ad-slot ad-link"
+          data-ad-provider="monetag"
+          href="https://omg10.com/4/11768279"
+          target="_blank"
+          rel="noopener noreferrer sponsored"
+          data-testid="link-monetag-ad"
+        >
           <span className="ad-slot-label">Advertisement</span>
-          <strong>Monetag placement</strong>
-          <small>Waiting for an approved placement code.</small>
-        </div>
+          <strong>Monetag sponsored link</strong>
+          <small>Opens in a new tab. Optional; no click required.</small>
+        </a>
       </div>
     </aside>
   );
