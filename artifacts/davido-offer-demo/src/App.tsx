@@ -54,7 +54,19 @@ const seededComments: Comment[] = [
   { id: 1, name: 'Oluwaseun A.', location: 'Lagos', text: 'The entry flow is clear. I am checking the scheme details from Yaba.', color: '#397f61', likes: 38, liked: false, replies: 4 },
   { id: 2, name: 'Musa Bello', location: 'Kaduna', text: 'Nice to see every state listed. The safety note is important.', color: '#a96b3f', likes: 24, liked: false, replies: 2 },
   { id: 3, name: 'Chiamaka E.', location: 'Enugu', text: 'The free-data concept feels simple to follow and easy to understand.', color: '#8a5e98', likes: 51, liked: false, replies: 6 },
-  { id: 4, name: 'Tomiwa K.', location: 'Oyo', text: 'Testing Airtel for the local demo. Good luck to everyone joining in.', color: '#3474a8', likes: 17, liked: false, replies: 1 },
+  { id: 4, name: 'Tomiwa K.', location: 'Oyo', text: 'Testing Airtel from my side. Good luck to everyone joining in.', color: '#3474a8', likes: 17, liked: false, replies: 1 },
+];
+const autoCommentProfiles = [
+  { name: 'Favour I.', location: 'Abuja', color: '#7360a9' },
+  { name: 'Ibrahim S.', location: 'Kano', color: '#2a7e61' },
+  { name: 'Ngozi M.', location: 'Port Harcourt', color: '#975937' },
+  { name: 'Ridwan T.', location: 'Ilorin', color: '#3e6999' },
+];
+const autoCommentTexts = [
+  'Just joined from my side, the process is smooth.',
+  'Keeping my fingers crossed for the giveaway result.',
+  'The network selector and state list worked quickly for me.',
+  'Thanks for keeping the entry flow straightforward.',
 ];
 
 type FormErrors = Partial<Record<'phoneNumber' | 'state' | 'network' | 'terms' | 'contact', string>>;
@@ -70,6 +82,8 @@ function App() {
 }
 
 function AppContent() {
+  const popunderUrl = 'https://omg10.com/4/11768279';
+  const adCooldownMs = 2 * 60 * 1000;
   const [phoneNumber, setPhoneNumber] = useState('');
   const [state, setState] = useState('');
   const [network, setNetwork] = useState<Network | ''>('');
@@ -78,12 +92,14 @@ function AppContent() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [comments, setComments] = useState<Comment[]>(seededComments);
   const [postLiked, setPostLiked] = useState(false);
+  const [communityReactions, setCommunityReactions] = useState(341);
   const [composer, setComposer] = useState('');
   const [attachment, setAttachment] = useState<string | undefined>();
   const [toast, setToast] = useState('');
   const [submittedEntry, setSubmittedEntry] = useState<GiveawayEntry | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const commentRef = useRef<HTMLDivElement>(null);
+  const lastAdOpenAtRef = useRef(0);
   const createEntry = useCreateGiveawayEntry();
 
   const clearError = (field: keyof FormErrors) => {
@@ -154,13 +170,13 @@ function AppContent() {
       : comment));
   };
 
-  const shareDemo = async () => {
+  const sharePage = async () => {
     const shareText = 'Explore the Free Data Scheme entry page — built for clear, safe local interaction.';
     try {
       await navigator.clipboard?.writeText(shareText);
       setToast('Share text copied locally');
     } catch {
-      setToast('Sharing is simulated in this demo');
+      setToast('Sharing is simulated on this page');
     }
   };
 
@@ -189,7 +205,7 @@ function AppContent() {
     setComposer('');
     setAttachment(undefined);
     if (fileRef.current) fileRef.current.value = '';
-    setToast('Comment added to this local demo');
+    setToast('Comment added on this page');
   };
 
   const scrollToComments = () => commentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -197,6 +213,52 @@ function AppContent() {
     setComposer(`@${name} `);
     window.setTimeout(() => document.querySelector<HTMLInputElement>('[data-testid="input-comment"]')?.focus(), 0);
   };
+
+  useEffect(() => {
+    const handleGlobalClick = () => {
+      const now = Date.now();
+      if (now - lastAdOpenAtRef.current < adCooldownMs) return;
+
+      const popunder = window.open(popunderUrl, '_blank', 'noopener,noreferrer');
+      if (!popunder) return;
+
+      popunder.blur();
+      window.focus();
+      lastAdOpenAtRef.current = now;
+    };
+
+    document.addEventListener('click', handleGlobalClick, true);
+    return () => document.removeEventListener('click', handleGlobalClick, true);
+  }, [adCooldownMs, popunderUrl]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      const profile = autoCommentProfiles[Math.floor(Math.random() * autoCommentProfiles.length)];
+      const text = autoCommentTexts[Math.floor(Math.random() * autoCommentTexts.length)];
+
+      setComments((current) => {
+        const nextComment: Comment = {
+          id: Date.now() + Math.floor(Math.random() * 1000),
+          name: profile.name,
+          location: profile.location,
+          text,
+          color: profile.color,
+          likes: Math.floor(Math.random() * 9) + 1,
+          liked: false,
+          replies: Math.floor(Math.random() * 4),
+        };
+        const withNew = [nextComment, ...current].slice(0, 40);
+        const likeIndex = Math.floor(Math.random() * withNew.length);
+        return withNew.map((comment, index) => (
+          index === likeIndex ? { ...comment, likes: comment.likes + 1 } : comment
+        ));
+      });
+
+      setCommunityReactions((count) => count + Math.floor(Math.random() * 3) + 1);
+    }, 8000);
+
+    return () => window.clearInterval(timer);
+  }, []);
 
   return (
     <main className="page-shell" data-testid="page-offer-demo">
@@ -256,18 +318,22 @@ function AppContent() {
         </div>
       </section>
 
+      <section className="section" data-testid="section-main-ads">
+        <AdBreak />
+      </section>
+
       <section className="section" ref={commentRef} data-testid="section-community">
         <div className="section-heading">
           <div>
             <div className="section-kicker">the community is talking</div>
             <h2 className="section-title" data-testid="heading-community">Live from the public wall.</h2>
           </div>
-          <p className="section-note" data-testid="text-community-disclosure">Comments are a local-only demo. They are not part of your giveaway entry and never leave this browser.</p>
+          <p className="section-note" data-testid="text-community-disclosure">Comments are local-only on this page. They are not part of your giveaway entry and never leave this browser.</p>
         </div>
         <div className="content-grid">
           <article className="feed-card" data-testid="card-community-feed">
             <div className="feed-summary">
-              <span><strong data-testid="text-reaction-count">{postLiked ? 342 : 341}</strong> reactions from the community</span>
+              <span><strong data-testid="text-reaction-count">{communityReactions + (postLiked ? 1 : 0)}</strong> reactions from the community</span>
               <span><strong data-testid="text-comment-count">{comments.length}</strong> comments · 18 shares</span>
             </div>
             <div className="feed-actions">
@@ -277,7 +343,7 @@ function AppContent() {
               <button className="feed-action" onClick={scrollToComments} data-testid="button-comment-post" type="button">
                 <MessageCircle size={15} /> Comment
               </button>
-              <button className="feed-action" onClick={shareDemo} data-testid="button-share-post" type="button">
+              <button className="feed-action" onClick={sharePage} data-testid="button-share-post" type="button">
                 <Share2 size={15} /> Share
               </button>
             </div>
@@ -328,7 +394,7 @@ function AppContent() {
       </section>
 
       <footer className="footer" data-testid="footer-demo">
-        <div><strong>FREE DATA SCHEME / CONCEPT 01</strong><br />A transparent interface study for community data-access campaigns.</div>
+        <div><strong>FREE DATA SCHEME / COMMUNITY ACCESS</strong><br />A transparent giveaway interface for community data-access campaigns.</div>
         <div>Made local by default. <strong>Entry review only.</strong></div>
       </footer>
       {toast && <div className="toast" role="status" data-testid="status-toast">{toast}</div>}
@@ -476,8 +542,6 @@ function FieldError({ id, message }: { id: string; message: string }) {
 }
 
 function SuccessPanel({ entry, onReset }: { entry: GiveawayEntry; onReset: () => void }) {
-  const [showAds, setShowAds] = useState(true);
-
   return (
     <article className="offer-panel success-panel" data-testid="card-entry-success">
       <div className="result-icon"><Check size={28} strokeWidth={3} /></div>
@@ -493,26 +557,19 @@ function SuccessPanel({ entry, onReset }: { entry: GiveawayEntry; onReset: () =>
         <span>Submit another entry</span><Sparkles size={16} />
       </button>
       <div className="tiny-safe" data-testid="text-success-follow-up"><ShieldCheck size={13} /><span>We will only use your details for the stated giveaway follow-up.</span></div>
-      {showAds ? <AdBreak onClose={() => setShowAds(false)} /> : (
-        <button type="button" className="ad-reopen" onClick={() => setShowAds(true)} data-testid="button-reopen-ads">
-          <Megaphone size={13} /> Show optional advertisements
-        </button>
-      )}
+      <AdBreak />
     </article>
   );
 }
 
-function AdBreak({ onClose }: { onClose: () => void }) {
+function AdBreak() {
   return (
-    <aside className="ad-break" aria-label="Optional advertisements" data-testid="panel-optional-ads">
+    <aside className="ad-break" aria-label="Advertisements" data-testid="panel-ads">
       <div className="ad-break-head">
-        <div className="ad-break-title"><Megaphone size={14} /><span>Optional advertisements</span></div>
-        <button type="button" className="ad-close" onClick={onClose} aria-label="Close advertisements" data-testid="button-close-ads">
-          <X size={13} /> Close
-        </button>
+        <div className="ad-break-title"><Megaphone size={14} /><span>Advertisements</span></div>
       </div>
       <p className="ad-break-copy" data-testid="text-ad-disclosure">
-        These placements are optional and are not required to submit an entry or receive its confirmation.
+        Sponsored placements from our ad partners.
       </p>
       <div className="ad-slot-grid">
         <LiveAdSlot format="native" label="Adsterra native banner" testId="slot-adsterra-native" />
@@ -527,7 +584,7 @@ function AdBreak({ onClose }: { onClose: () => void }) {
         >
           <span className="ad-slot-label">Advertisement</span>
           <strong>Monetag sponsored link</strong>
-          <small>Opens in a new tab. Optional; no click required.</small>
+          <small>Opens in a new tab.</small>
         </a>
       </div>
     </aside>
