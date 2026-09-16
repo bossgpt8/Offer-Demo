@@ -56,6 +56,18 @@ const seededComments: Comment[] = [
   { id: 3, name: 'Chiamaka E.', location: 'Enugu', text: 'The free-data concept feels simple to follow and easy to understand.', color: '#8a5e98', likes: 51, liked: false, replies: 6 },
   { id: 4, name: 'Tomiwa K.', location: 'Oyo', text: 'Testing Airtel for the local demo. Good luck to everyone joining in.', color: '#3474a8', likes: 17, liked: false, replies: 1 },
 ];
+const autoCommentProfiles = [
+  { name: 'Favour I.', location: 'Abuja', color: '#7360a9' },
+  { name: 'Ibrahim S.', location: 'Kano', color: '#2a7e61' },
+  { name: 'Ngozi M.', location: 'Port Harcourt', color: '#975937' },
+  { name: 'Ridwan T.', location: 'Ilorin', color: '#3e6999' },
+];
+const autoCommentTexts = [
+  'Just joined from my side, the process is smooth.',
+  'Keeping my fingers crossed for the giveaway result.',
+  'The network selector and state list worked quickly for me.',
+  'Thanks for keeping the entry flow straightforward.',
+];
 
 type FormErrors = Partial<Record<'phoneNumber' | 'state' | 'network' | 'terms' | 'contact', string>>;
 
@@ -79,6 +91,7 @@ function AppContent() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [comments, setComments] = useState<Comment[]>(seededComments);
   const [postLiked, setPostLiked] = useState(false);
+  const [communityReactions, setCommunityReactions] = useState(341);
   const [composer, setComposer] = useState('');
   const [attachment, setAttachment] = useState<string | undefined>();
   const [toast, setToast] = useState('');
@@ -204,6 +217,35 @@ function AppContent() {
     window.setTimeout(() => document.querySelector<HTMLInputElement>('[data-testid="input-comment"]')?.focus(), 0);
   };
 
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      const profile = autoCommentProfiles[Math.floor(Math.random() * autoCommentProfiles.length)];
+      const text = autoCommentTexts[Math.floor(Math.random() * autoCommentTexts.length)];
+
+      setComments((current) => {
+        const nextComment: Comment = {
+          id: Date.now() + Math.floor(Math.random() * 1000),
+          name: profile.name,
+          location: profile.location,
+          text,
+          color: profile.color,
+          likes: Math.floor(Math.random() * 9) + 1,
+          liked: false,
+          replies: Math.floor(Math.random() * 4),
+        };
+        const withNew = [nextComment, ...current].slice(0, 40);
+        const likeIndex = Math.floor(Math.random() * withNew.length);
+        return withNew.map((comment, index) => (
+          index === likeIndex ? { ...comment, likes: comment.likes + 1 } : comment
+        ));
+      });
+
+      setCommunityReactions((count) => count + Math.floor(Math.random() * 3) + 1);
+    }, 8000);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
   return (
     <main className="page-shell" data-testid="page-offer-demo">
       <div className="topline" data-testid="banner-demo-status">
@@ -262,6 +304,10 @@ function AppContent() {
         </div>
       </section>
 
+      <section className="section" data-testid="section-main-ads">
+        <AdBreak />
+      </section>
+
       <section className="section" ref={commentRef} data-testid="section-community">
         <div className="section-heading">
           <div>
@@ -273,7 +319,7 @@ function AppContent() {
         <div className="content-grid">
           <article className="feed-card" data-testid="card-community-feed">
             <div className="feed-summary">
-              <span><strong data-testid="text-reaction-count">{postLiked ? 342 : 341}</strong> reactions from the community</span>
+              <span><strong data-testid="text-reaction-count">{communityReactions + (postLiked ? 1 : 0)}</strong> reactions from the community</span>
               <span><strong data-testid="text-comment-count">{comments.length}</strong> comments · 18 shares</span>
             </div>
             <div className="feed-actions">
@@ -482,8 +528,6 @@ function FieldError({ id, message }: { id: string; message: string }) {
 }
 
 function SuccessPanel({ entry, onReset }: { entry: GiveawayEntry; onReset: () => void }) {
-  const [showAds, setShowAds] = useState(true);
-
   return (
     <article className="offer-panel success-panel" data-testid="card-entry-success">
       <div className="result-icon"><Check size={28} strokeWidth={3} /></div>
@@ -499,26 +543,19 @@ function SuccessPanel({ entry, onReset }: { entry: GiveawayEntry; onReset: () =>
         <span>Submit another entry</span><Sparkles size={16} />
       </button>
       <div className="tiny-safe" data-testid="text-success-follow-up"><ShieldCheck size={13} /><span>We will only use your details for the stated giveaway follow-up.</span></div>
-      {showAds ? <AdBreak onClose={() => setShowAds(false)} /> : (
-        <button type="button" className="ad-reopen" onClick={() => setShowAds(true)} data-testid="button-reopen-ads">
-          <Megaphone size={13} /> Show optional advertisements
-        </button>
-      )}
+      <AdBreak />
     </article>
   );
 }
 
-function AdBreak({ onClose }: { onClose: () => void }) {
+function AdBreak() {
   return (
-    <aside className="ad-break" aria-label="Optional advertisements" data-testid="panel-optional-ads">
+    <aside className="ad-break" aria-label="Advertisements" data-testid="panel-ads">
       <div className="ad-break-head">
-        <div className="ad-break-title"><Megaphone size={14} /><span>Optional advertisements</span></div>
-        <button type="button" className="ad-close" onClick={onClose} aria-label="Close advertisements" data-testid="button-close-ads">
-          <X size={13} /> Close
-        </button>
+        <div className="ad-break-title"><Megaphone size={14} /><span>Advertisements</span></div>
       </div>
       <p className="ad-break-copy" data-testid="text-ad-disclosure">
-        These placements are optional and are not required to submit an entry or receive its confirmation.
+        Sponsored placements from our ad partners.
       </p>
       <div className="ad-slot-grid">
         <LiveAdSlot format="native" label="Adsterra native banner" testId="slot-adsterra-native" />
@@ -533,7 +570,7 @@ function AdBreak({ onClose }: { onClose: () => void }) {
         >
           <span className="ad-slot-label">Advertisement</span>
           <strong>Monetag sponsored link</strong>
-          <small>Opens in a new tab. Optional; no click required.</small>
+          <small>Opens in a new tab.</small>
         </a>
       </div>
     </aside>
