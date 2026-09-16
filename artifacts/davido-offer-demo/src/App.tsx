@@ -8,6 +8,7 @@ import {
   Heart,
   ImagePlus,
   LockKeyhole,
+  Megaphone,
   MapPin,
   MessageCircle,
   Radio,
@@ -475,6 +476,8 @@ function FieldError({ id, message }: { id: string; message: string }) {
 }
 
 function SuccessPanel({ entry, onReset }: { entry: GiveawayEntry; onReset: () => void }) {
+  const [showAds, setShowAds] = useState(true);
+
   return (
     <article className="offer-panel success-panel" data-testid="card-entry-success">
       <div className="result-icon"><Check size={28} strokeWidth={3} /></div>
@@ -490,7 +493,40 @@ function SuccessPanel({ entry, onReset }: { entry: GiveawayEntry; onReset: () =>
         <span>Submit another entry</span><Sparkles size={16} />
       </button>
       <div className="tiny-safe" data-testid="text-success-follow-up"><ShieldCheck size={13} /><span>We will only use your details for the stated giveaway follow-up.</span></div>
+      {showAds ? <AdBreak onClose={() => setShowAds(false)} /> : (
+        <button type="button" className="ad-reopen" onClick={() => setShowAds(true)} data-testid="button-reopen-ads">
+          <Megaphone size={13} /> Show optional advertisements
+        </button>
+      )}
     </article>
+  );
+}
+
+function AdBreak({ onClose }: { onClose: () => void }) {
+  return (
+    <aside className="ad-break" aria-label="Optional advertisements" data-testid="panel-optional-ads">
+      <div className="ad-break-head">
+        <div className="ad-break-title"><Megaphone size={14} /><span>Optional advertisements</span></div>
+        <button type="button" className="ad-close" onClick={onClose} aria-label="Close advertisements" data-testid="button-close-ads">
+          <X size={13} /> Close
+        </button>
+      </div>
+      <p className="ad-break-copy" data-testid="text-ad-disclosure">
+        These placements are optional and are not required to submit an entry or receive its confirmation.
+      </p>
+      <div className="ad-slot-grid">
+        <div className="ad-slot" data-ad-provider="adsterra" data-testid="slot-adsterra">
+          <span className="ad-slot-label">Advertisement</span>
+          <strong>Adsterra placement</strong>
+          <small>Waiting for an approved banner or native placement code.</small>
+        </div>
+        <div className="ad-slot" data-ad-provider="monetag" data-testid="slot-monetag">
+          <span className="ad-slot-label">Advertisement</span>
+          <strong>Monetag placement</strong>
+          <small>Waiting for an approved banner or vignette placement code.</small>
+        </div>
+      </div>
+    </aside>
   );
 }
 
