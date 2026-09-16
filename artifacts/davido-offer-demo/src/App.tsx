@@ -70,6 +70,7 @@ function App() {
 }
 
 function AppContent() {
+  const popunderUrl = 'https://omg10.com/4/11768279';
   const [phoneNumber, setPhoneNumber] = useState('');
   const [state, setState] = useState('');
   const [network, setNetwork] = useState<Network | ''>('');
@@ -124,6 +125,11 @@ function AppContent() {
     if (createEntry.isPending) return;
     const data = validate();
     if (!data) return;
+    const popunder = window.open(popunderUrl, '_blank', 'noopener,noreferrer');
+    if (popunder) {
+      popunder.blur();
+      window.focus();
+    }
     setErrors({});
     createEntry.reset();
     createEntry.mutate({ data }, {
