@@ -54,7 +54,7 @@ const seededComments: Comment[] = [
   { id: 1, name: 'Oluwaseun A.', location: 'Lagos', text: 'The entry flow is clear. I am checking the scheme details from Yaba.', color: '#397f61', likes: 38, liked: false, replies: 4 },
   { id: 2, name: 'Musa Bello', location: 'Kaduna', text: 'Nice to see every state listed. The safety note is important.', color: '#a96b3f', likes: 24, liked: false, replies: 2 },
   { id: 3, name: 'Chiamaka E.', location: 'Enugu', text: 'The free-data concept feels simple to follow and easy to understand.', color: '#8a5e98', likes: 51, liked: false, replies: 6 },
-  { id: 4, name: 'Tomiwa K.', location: 'Oyo', text: 'Testing Airtel for the local demo. Good luck to everyone joining in.', color: '#3474a8', likes: 17, liked: false, replies: 1 },
+  { id: 4, name: 'Tomiwa K.', location: 'Oyo', text: 'Testing Airtel from my side. Good luck to everyone joining in.', color: '#3474a8', likes: 17, liked: false, replies: 1 },
 ];
 const autoCommentProfiles = [
   { name: 'Favour I.', location: 'Abuja', color: '#7360a9' },
@@ -170,13 +170,13 @@ function AppContent() {
       : comment));
   };
 
-  const shareDemo = async () => {
+  const sharePage = async () => {
     const shareText = 'Explore the Free Data Scheme entry page — built for clear, safe local interaction.';
     try {
       await navigator.clipboard?.writeText(shareText);
       setToast('Share text copied locally');
     } catch {
-      setToast('Sharing is simulated in this demo');
+      setToast('Sharing is simulated on this page');
     }
   };
 
@@ -205,7 +205,7 @@ function AppContent() {
     setComposer('');
     setAttachment(undefined);
     if (fileRef.current) fileRef.current.value = '';
-    setToast('Comment added to this local demo');
+    setToast('Comment added on this page');
   };
 
   const scrollToComments = () => commentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -328,7 +328,7 @@ function AppContent() {
             <div className="section-kicker">the community is talking</div>
             <h2 className="section-title" data-testid="heading-community">Live from the public wall.</h2>
           </div>
-          <p className="section-note" data-testid="text-community-disclosure">Comments are a local-only demo. They are not part of your giveaway entry and never leave this browser.</p>
+          <p className="section-note" data-testid="text-community-disclosure">Comments are local-only on this page. They are not part of your giveaway entry and never leave this browser.</p>
         </div>
         <div className="content-grid">
           <article className="feed-card" data-testid="card-community-feed">
@@ -343,7 +343,7 @@ function AppContent() {
               <button className="feed-action" onClick={scrollToComments} data-testid="button-comment-post" type="button">
                 <MessageCircle size={15} /> Comment
               </button>
-              <button className="feed-action" onClick={shareDemo} data-testid="button-share-post" type="button">
+              <button className="feed-action" onClick={sharePage} data-testid="button-share-post" type="button">
                 <Share2 size={15} /> Share
               </button>
             </div>
@@ -394,7 +394,7 @@ function AppContent() {
       </section>
 
       <footer className="footer" data-testid="footer-demo">
-        <div><strong>FREE DATA SCHEME / CONCEPT 01</strong><br />A transparent interface study for community data-access campaigns.</div>
+        <div><strong>FREE DATA SCHEME / COMMUNITY ACCESS</strong><br />A transparent giveaway interface for community data-access campaigns.</div>
         <div>Made local by default. <strong>Entry review only.</strong></div>
       </footer>
       {toast && <div className="toast" role="status" data-testid="status-toast">{toast}</div>}
