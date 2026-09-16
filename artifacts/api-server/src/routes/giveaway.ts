@@ -15,6 +15,10 @@ function normalizeNigerianPhoneNumber(phoneNumber: string): string | null {
     return `+234${compact.slice(1)}`;
   }
 
+  if (/^[789]\d{9}$/.test(compact)) {
+    return `+234${compact}`;
+  }
+
   return null;
 }
 

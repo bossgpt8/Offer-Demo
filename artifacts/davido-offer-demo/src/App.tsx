@@ -91,17 +91,18 @@ function AppContent() {
   };
 
   const normalizePhone = (value: string) => {
-    const compact = value.replace(/[\s()-]/g, '');
+    const compact = value.replace(/[^\d+]/g, '');
     if (compact.startsWith('0')) return `+234${compact.slice(1)}`;
     if (compact.startsWith('234')) return `+${compact}`;
+    if (/^[789]\d{9}$/.test(compact)) return `+234${compact}`;
     return compact;
   };
 
   const validate = (): GiveawayEntryInput | null => {
     const nextErrors: FormErrors = {};
-    const compact = phoneNumber.replace(/[\s()-]/g, '');
-    const validNigerianPhone = /^(?:0[789]\d{9}|\+234[789]\d{9}|234[789]\d{9})$/.test(compact);
-    if (!validNigerianPhone) nextErrors.phoneNumber = 'Enter a valid Nigerian mobile number, for example 080 1234 5678.';
+    const compact = phoneNumber.replace(/[^\d+]/g, '');
+    const validNigerianPhone = /^(?:0[789]\d{9}|\+?234[789]\d{9}|[789]\d{9})$/.test(compact);
+    if (!validNigerianPhone) nextErrors.phoneNumber = 'Enter a valid Nigerian mobile number, for example 801 234 5678.';
     if (!state) nextErrors.state = 'Select the state where you live.';
     if (!network) nextErrors.network = 'Choose your mobile network.';
     if (!consentToTerms) nextErrors.terms = 'Please agree to the terms and privacy notice to enter.';
